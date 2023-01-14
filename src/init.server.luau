@@ -19,6 +19,7 @@ toggle.Click:Connect(function()
 	Widget.Enabled = not Widget.Enabled
 end)
 
+local Parse = require(script.Parse)
 local Fusion = require(script.Fusion)
 local New = Fusion.New
 local Children = Fusion.Children
@@ -37,10 +38,13 @@ New "TextButton" {
 	Text = "yeah",
 	Parent = Widget,
 
+	BackgroundColor3 = Color3.new(),
+	TextColor3 = Color3.new(1, 1, 1),
+
 	[OnEvent "Activated"] = function()
 		local selection = Selection:get()[1]
-		if selection:IsA "LuaSourceContainer" then
-			print(selection.Source)
+		if selection and selection:IsA "LuaSourceContainer" then
+			Parse(selection.Source)
 		else
 			warn "invalid selection"
 		end
