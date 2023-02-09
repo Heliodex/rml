@@ -33,7 +33,7 @@ end
 
 New "TextButton" {
 	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromScale(0.9, 0.9),
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Text = "yeah",
 	Parent = Widget,
@@ -44,7 +44,7 @@ New "TextButton" {
 	[OnEvent "Activated"] = function()
 		local selection = Selection:get()[1]
 		if selection and selection:IsA "LuaSourceContainer" then
-			Parse(selection.Source)
+			Parse(selection)
 		else
 			warn "invalid selection"
 		end
