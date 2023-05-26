@@ -1,6 +1,6 @@
 local prn = function(l, f, ...)
 	local t = (" [%s] "):format(l:upper())
-	print(`[HTMLParser]{t}{f:format(...)}\n`)
+	print("[HTMLParser]" .. t .. f:format(...) .. "\n")
 end
 
 local err = function(f, ...)
@@ -14,7 +14,7 @@ local function parse(text, limit)
 	limit = limit or 1000
 	local tpl = false
 
-	text = text:gsub("<!%-%-.-%-%->", "") -- Many chances commented code will have syntax errors, that'll lead to parser failures
+	-- text = text:gsub("<!%-%-.-%-%->", "") -- Many chances commented code will have syntax errors, that'll lead to parser failures
 
 	local tpr = {}
 
@@ -81,8 +81,7 @@ local function parse(text, limit)
 			end
 		) -- Escape "<"/">" inside attr.values (see issue #50)
 		:gsub(
-			"(<" -- Match "<",
-				.. "[^!]" -- with exclusion pattern (for example, to ignore comments, which aren't template placeholders, but can legally contain "<"/">" inside.
+			"([^!]" -- with exclusion pattern (for example, to ignore comments, which aren't template placeholders, but can legally contain "<"/">" inside.
 				.. ")([^>]+)" -- If matched, we want to escape '<'s if we meet them inside tag
 				.. "(>)",
 			function(...)
@@ -105,6 +104,7 @@ local function parse(text, limit)
 	local index = 0
 	local root = ElementNode:new(index, tostring(text))
 	local node, descend, tpos, opentags = root, true, 1, {}
+	local lastTags = {}
 
 	while true do -- MainLoop {{{
 		if index == limit then
@@ -117,9 +117,9 @@ local function parse(text, limit)
 		-- openstart/tpos Definitions {{{
 		local openstart, name
 		openstart, tpos, name = root._text:find(
-			"<" -- an uncaptured starting "<"
+			"" -- an uncaptured starting "<"
 				.. "([%w-]+)" -- name = the first word, directly following the "<"
-				.. "[^>]*>", -- include, but not capture everything up to the next ">"
+				.. "[^\n]*\n", -- include, but not capture everything up to the next ">"
 			tpos
 		)
 		if not name then
@@ -150,23 +150,28 @@ local function parse(text, limit)
 			local k, eq, quote, v
 			_, apos, k, _, eq, _, quote = tagst:find(
 				"%s+" -- some uncaptured space
-					.. "([^%s=/>]+)" -- k = an unspaced string up to an optional "=" or the "/" or ">"
+					.. "([^%s:/]+)" -- k: an unspaced string up to an optional "=" or the "/" or ">"
 					.. "([%s]-)" -- zero or more spaces
-					.. "(=?)" -- eq = the optional; "=", else ""
+					.. "(:?)%s+" -- eq: the optional; "=", else ""
 					.. "([%s]-)" -- zero or more spaces
-					.. "(['\"]?)", -- quote = an optional "'" or '"' following the "=", or ""
+					.. "(['\"]?)", -- quote: an optional "'" or '"' following the "=", or ""
 
 				apos
 			)
 
-			print(k)
-
-			if not k or k == "/>" or k == ">" then
+			if
+				not k
+				-- or k == "/"
+				or k == ""
+			then
 				break
 			end
+			-- k is an attribute name
+			print(k)
+
 			-- Pattern {{{
-			if eq == "=" then
-				local pattern = "=([^%s>]*)"
+			if eq == ":" then
+				local pattern = "([^%s]*)"
 				if quote ~= "" then
 					pattern = `{quote}([^{quote}]*){quote}`
 				end
@@ -182,8 +187,12 @@ local function parse(text, limit)
 			tag:addattribute(k, v)
 			tagloop = (tagloop or 0) + 1
 		end
+
+		-- descend = true
 		opentags[tag.name] = opentags[tag.name] or {}
 		table.insert(opentags[tag.name], tag)
+		table.insert(lastTags, tag.name)
+
 		local closeend = tpos
 		local closingloop
 		while true do -- TagCloseLoop {{{
@@ -195,17 +204,21 @@ local function parse(text, limit)
 				break
 			end
 
-			local closestart, closing, closename
-			closestart, closeend, closing, closename =
-				root._text:find("[^<]*<(/?)([%w-]+)", closeend)
+			local closing
+			_, closeend, closing = root._text:find("!([%a#]?)", closeend)
 
-			if not closing or closing == "" then
+			print(closing)
+
+			if closing ~= "#" then
 				break
 			end
 
-			tag = table.remove(opentags[closename] or {}) or tag -- kludges for the cases of closing void or non-opened tags
-			closestart = root._text:find("<", closestart)
-			tag:close(closestart, closeend + 1)
+			local lastTagName = lastTags[#lastTags]
+			tag = table.remove(opentags[lastTagName] or {}) or tag -- kludges for the cases of closing void or non-opened tags
+			table.remove(lastTags, #lastTags)
+
+			-- closestart = root._text:find("!", closestart)
+			-- tag:close(closestart, closeend + 1)
 			node = tag.parent
 			descend = true
 			closingloop = (closingloop or 0) + 1
@@ -219,6 +232,4 @@ local function parse(text, limit)
 	return root
 end
 
-return {
-	parse = parse,
-}
+return { parse = parse }
