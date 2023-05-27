@@ -10,10 +10,10 @@ return function(selected)
 	print "---------- Parsing rml... ----------"
 
 	if not string.match(source, "^%s*<root>.+</root>%s*$") then
+		-- XML parser only parses one element, so wrap everything in <root>
 		source = `<root>{source}</root>`
 	end
 
-	selected:ClearAllChildren()
 	ChangeHistoryService:SetWaypoint "Clear children of selection"
 
 	local handler = xmlhandler:new()
@@ -22,13 +22,14 @@ return function(selected)
 
 	local scriptSource = ""
 
-	local rootParent = game.ServerStorage.html
+	local rootParent = game.StarterGui
+	rootParent:ClearAllChildren()
 	local referencedInstances = {}
 	local connectedFunctions = {}
 
 	local function children(e: table, parents: { Instance }, depth: number)
 		for _, v in pairs(e) do
-			if type(v) == "table" and v._type == "ELEMENT" then
+			if v._type == "ELEMENT" then
 				print(string.rep("\t", depth), v._name)
 
 				if v._name == "script" then
@@ -52,8 +53,15 @@ return function(selected)
 						end
 						referencedInstances[a] = instance
 						continue
+					elseif string.match(i, "^#") then
+						local referenceName = string.match(i, "^#(%a%w*)$")
+						if referencedInstances[referenceName] then
+							warn(`Duplicate reference: {referenceName}`)
+						end
+						referencedInstances[referenceName] = instance
+						continue
 					elseif string.match(i, "^on:") then
-						local eventName = string.match(i, "^on:(%w+)$")
+						local eventName = string.match(i, "^on:(%a%w*)$")
 
 						if not eventName then
 							warn(`Invalid event name: {i}`)
@@ -95,6 +103,13 @@ return function(selected)
 				table.remove(parents)
 
 				instance.Parent = parents[#parents]
+			elseif v._type == "TEXT" then
+				local parent = parents[#parents]
+				local text = string.gsub(v._text, "\n\t", "\n")
+
+				if parent:IsA "TextLabel" or parent:IsA "TextButton" then
+					parent.Text = text
+				end
 			end
 		end
 	end

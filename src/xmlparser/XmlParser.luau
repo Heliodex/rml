@@ -50,7 +50,7 @@ local XmlParser = {
 	_ATTR3 = "([%w-:_]+)%s*=%s*{(.-)}",
 
 	-- Attributes without values
-	_ATTR4 = "([%w-:_]+)",
+	_ATTR4 = "([%w-:_#]+)",
 
 	_CDATA = "<%!%[CDATA%[(.-)%]%]>",
 	_PI = "<%?(.-)%?>",
