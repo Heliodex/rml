@@ -53,3 +53,17 @@
 		/>
 	</Frame>
 </ScreenGui>
+
+<style>
+	testing
+		property: value
+
+		testing2
+			testing3
+				testing45
+
+	bruh
+		bruh2
+			bruh3
+				bruh45
+</style>

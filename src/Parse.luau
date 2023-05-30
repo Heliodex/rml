@@ -1,6 +1,7 @@
 local ChangeHistoryService = game:GetService "ChangeHistoryService"
 local xml = require(script.Parent.xmlparser)
 local xmlhandler = require(script.Parent.xmlparser.xmlhandler.dom)
+local styleparser = require(script.Parent.styleparser)
 
 return function(selected)
 	-- Ensure the entire script is inside a comment
@@ -21,6 +22,7 @@ return function(selected)
 	xml.parser(handler):parse(source)
 
 	local scriptSource = ""
+	local styleSource = ""
 
 	local rootParent = game.StarterGui
 	rootParent:ClearAllChildren()
@@ -36,6 +38,14 @@ return function(selected)
 					for _, v2 in pairs(v._children) do
 						if v2._type == "TEXT" then
 							scriptSource ..= string.gsub(v2._text, "\n\t", "\n") .. "\n"
+						end
+					end
+
+					continue
+				elseif v._name == "style" then
+					for _, v2 in pairs(v._children) do
+						if v2._type == "TEXT" then
+							styleSource ..= string.gsub(v2._text, "\n\t", "\n") .. "\n"
 						end
 					end
 
@@ -121,6 +131,27 @@ return function(selected)
 	if scriptSource == "" then
 		return
 	end
+
+	print "---------- Applying styles... ----------"
+
+	local styletree = styleparser(styleSource)
+
+	function tp(tab, depth)
+		local tt = {}
+		for i, v in pairs(tab) do
+			if type(v) == "table" then
+				table.insert(tt, i)
+			else
+				print(string.rep("\t", depth), i, v)
+			end
+		end
+
+		for _, v in pairs(tt) do
+			tp(tab[v], depth + 1)
+		end
+	end
+
+	tp(styletree, 1)
 
 	print "---------- Writing scripts... ----------"
 
